@@ -1,0 +1,378 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<stdbool.h>
+
+#define BASE 2
+
+typedef struct {
+    int *Tdigits;
+    int Taille;
+    int Signe;
+} BigBinary;
+
+BigBinary createBigBinary(int size) {
+    BigBinary bb;
+    bb.Tdigits = (int *)malloc(sizeof(int) * size);
+    bb.Taille = size;
+    bb.Signe = 0;
+    return bb;
+}
+
+BigBinary initBigBinary(int taille, int signe) {
+    BigBinary nb;
+    nb.Taille = taille;
+    nb.Signe = signe;
+    nb.Tdigits = (int *)malloc(sizeof(int) * taille);
+    for (int i = 0; i < taille; ++i)
+        nb.Tdigits[i] = 0;
+    return nb;
+}
+
+void afficheBigBinary(BigBinary nb) {
+    if (nb.Signe == -1) printf("-");
+    if (nb.Signe == 0 || nb.Taille == 0) {
+        printf("0\n");
+        return;
+    }
+    for (int i = 0; i < nb.Taille; ++i)
+        printf("%d", nb.Tdigits[i]);
+    printf("\n");
+}
+
+void libereBigBinary(BigBinary *nb) {
+    free(nb->Tdigits);
+    nb->Tdigits = NULL;
+    nb->Taille = 0;
+    nb->Signe = 0;
+}
+
+bool estNul(BigBinary A) {
+    for (int i = 0; i < A.Taille; i++)
+        if (A.Tdigits[i] != 0)
+            return false;
+    return true;
+}
+
+bool estPair(BigBinary A) {
+    return (A.Tdigits[A.Taille - 1] == 0);
+}
+
+BigBinary multipliePar2(BigBinary A) {
+    BigBinary res = initBigBinary(A.Taille + 1, A.Signe);
+    for (int i = 0; i < A.Taille; i++)
+        res.Tdigits[i] = A.Tdigits[i];
+    res.Tdigits[A.Taille] = 0;
+    return res;
+}
+
+BigBinary divisePar2(BigBinary A) {
+    if (A.Taille <= 1)
+        return initBigBinary(1, 0);
+    BigBinary res = initBigBinary(A.Taille - 1, A.Signe);
+    for (int i = 0; i < res.Taille; i++)
+        res.Tdigits[i] = A.Tdigits[i];
+    return res;
+}
+
+BigBinary creerBigBinaryDepuisChaine(const char *chaine) {
+    BigBinary nb;
+    int n = strlen(chaine);
+    nb.Taille = 0;
+
+    for (int i = 0; i < n; ++i)
+        if (chaine[i] == '0' || chaine[i] == '1') nb.Taille++;
+
+    nb.Tdigits = (int *)malloc(sizeof(int) * nb.Taille);
+    nb.Signe = 1;
+    int index = 0;
+    int tousZeros = 1;
+
+    for (int i = 0; i < n; ++i) {
+        if (chaine[i] == '0' || chaine[i] == '1') {
+            nb.Tdigits[index] = chaine[i] - '0';
+            if (nb.Tdigits[index] == 1) tousZeros = 0;
+            index++;
+        }
+    }
+
+    if (tousZeros) nb.Signe = 0;
+    return nb;
+}
+
+BigBinary copie(BigBinary A) {
+    BigBinary result;
+    result.Taille = A.Taille;
+    result.Signe = A.Signe;
+    result.Tdigits = (int *)malloc(sizeof(int) * A.Taille);
+    for (int i = 0; i < A.Taille; i++)
+        result.Tdigits[i] = A.Tdigits[i];
+    return result;
+}
+
+bool Egal(BigBinary A, BigBinary B) {
+    if (A.Signe != B.Signe || A.Taille != B.Taille)
+        return 0;
+    for (int i = 0; i < A.Taille; i++)
+        if (A.Tdigits[i] != B.Tdigits[i])
+            return 0;
+    return 1;
+}
+
+bool Inferieur(BigBinary A, BigBinary B) {
+    if (A.Taille < B.Taille) return 1;
+    if (A.Taille > B.Taille) return 0;
+    for (int i = 0; i < A.Taille; i++) {
+        if (A.Tdigits[i] < B.Tdigits[i]) return 1;
+        if (A.Tdigits[i] > B.Tdigits[i]) return 0;
+    }
+    return 0;
+}
+
+BigBinary Addition(BigBinary A, BigBinary B) {
+    int maxTaille = (A.Taille > B.Taille) ? A.Taille : B.Taille;
+    BigBinary result = initBigBinary(maxTaille + 1, 1);
+    int carry = 0;
+    for (int i = 0; i < maxTaille; i++) {
+        int bitA = (A.Taille - 1 - i >= 0) ? A.Tdigits[A.Taille - 1 - i] : 0;
+        int bitB = (B.Taille - 1 - i >= 0) ? B.Tdigits[B.Taille - 1 - i] : 0;
+        int somme = bitA + bitB + carry;
+        result.Tdigits[result.Taille - 1 - i] = somme % 2;
+        carry = somme / 2;
+    }
+    result.Tdigits[0] = carry;
+    int start = 0;
+    while (start < result.Taille - 1 && result.Tdigits[start] == 0) start++;
+    if (start > 0) {
+        BigBinary trimmed = initBigBinary(result.Taille - start, 1);
+        for (int i = 0; i < trimmed.Taille; i++)
+            trimmed.Tdigits[i] = result.Tdigits[start + i];
+        libereBigBinary(&result);
+        result = trimmed;
+    }
+    return result;
+}
+
+BigBinary Soustraction(BigBinary A, BigBinary B) {
+    if (Inferieur(A, B)) {
+        BigBinary zero = initBigBinary(1, 0);
+        zero.Tdigits[0] = 0;
+        return zero;
+    }
+    BigBinary result = initBigBinary(A.Taille, 1);
+    int borrow = 0;
+    for (int i = 0; i < A.Taille; i++) {
+        int bitA = A.Tdigits[A.Taille - 1 - i];
+        int bitB = (B.Taille - 1 - i >= 0) ? B.Tdigits[B.Taille - 1 - i] : 0;
+        int diff = bitA - bitB - borrow;
+        if (diff < 0) {
+            diff += 2;
+            borrow = 1;
+        } else {
+            borrow = 0;
+        }
+        result.Tdigits[result.Taille - 1 - i] = diff;
+    }
+    int start = 0;
+    while (start < result.Taille - 1 && result.Tdigits[start] == 0) start++;
+    if (start > 0) {
+        BigBinary trimmed = initBigBinary(result.Taille - start, 1);
+        for (int i = 0; i < trimmed.Taille; i++)
+            trimmed.Tdigits[i] = result.Tdigits[start + i];
+        libereBigBinary(&result);
+        result = trimmed;
+    }
+    return result;
+}
+
+
+
+
+BigBinary BigBinary_PGCD(BigBinary A, BigBinary B) {
+    if (estNul(A)) return B;
+    if (estNul(B)) return A;
+
+    int facteur2 = 0;
+
+    while (estPair(A) && estPair(B)) {
+        A = divisePar2(A);
+        B = divisePar2(B);
+        facteur2++;
+    }
+
+    while (!estNul(A)) {
+        while (estPair(A)) A = divisePar2(A);
+        while (estPair(B)) B = divisePar2(B);
+
+        if (!Inferieur(A, B))
+            A = Soustraction(A, B);
+        else
+            B = Soustraction(B, A);
+    }
+
+    for (int i = 0; i < facteur2; i++)
+        B = multipliePar2(B);
+
+    return B;
+}
+
+BigBinary multiplicationEgyptienne(BigBinary A, BigBinary B) {
+    BigBinary resultat = initBigBinary(1, 0);
+    BigBinary a = copie(A);
+    BigBinary b = copie(B);
+
+    while (!estNul(b)) {
+        if (!estPair(b)) {
+            BigBinary tmp = Addition(resultat, a);
+            libereBigBinary(&resultat);
+            resultat = tmp;
+        }
+
+        BigBinary tmpA = multipliePar2(a);
+        libereBigBinary(&a);
+        a = tmpA;
+
+        BigBinary tmpB = divisePar2(b);
+        libereBigBinary(&b);
+        b = tmpB;
+    }
+
+    libereBigBinary(&a);
+    libereBigBinary(&b);
+    return resultat;
+}
+
+BigBinary BigBinary_mod(BigBinary A, BigBinary B) {
+    if (estNul(B)) return initBigBinary(1, 0);
+    BigBinary R = copie(A);
+    while (!Inferieur(R, B)) {
+        BigBinary tmp = Soustraction(R, B);
+        libereBigBinary(&R);
+        R = tmp;
+    }
+    return R;
+}
+
+BigBinary BigBinary_expMod(BigBinary base, int exp, BigBinary mod) {
+    BigBinary result = creerBigBinaryDepuisChaine("1");
+    BigBinary tmpBase = BigBinary_mod(copie(base), mod);
+
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            BigBinary tmp = multiplicationEgyptienne(result, tmpBase);
+            libereBigBinary(&result);
+            result = BigBinary_mod(tmp, mod);
+            libereBigBinary(&tmp);
+        }
+        BigBinary tmp = multiplicationEgyptienne(tmpBase, tmpBase);
+        libereBigBinary(&tmpBase);
+        tmpBase = BigBinary_mod(tmp, mod);
+        libereBigBinary(&tmp);
+
+        exp /= 2;
+    }
+
+    libereBigBinary(&tmpBase);
+    return result;
+}
+
+
+int main() {
+    char chaineA[256], chaineB[256];
+    int choix, exposant;
+
+    printf("=== CALCUL SUR GRANDS ENTIERS BINAIRES ===\n");
+
+    printf("Entrez le premier nombre binaire A : ");
+    scanf("%s", chaineA);
+    printf("Entrez le deuxième nombre binaire B : ");
+    scanf("%s", chaineB);
+
+    BigBinary A = creerBigBinaryDepuisChaine(chaineA);
+    BigBinary B = creerBigBinaryDepuisChaine(chaineB);
+
+    do {
+        printf("\n--- MENU ---\n");
+
+        printf("1. Calculer l'addition\n");
+        printf("2. Calculer la soustraction\n");
+        printf("3. Vérifier l'égaliter\n");
+        printf("4. Comparaison\n");
+        printf("5. Calculer la multiplication Egyptienne \n");
+        printf("6. Calculer le PGCD binaire (Euclide)\n");
+        printf("7. Calculer le modulo (A mod B)\n");
+        printf("8. Calculer l’expodentiation modulaire (A^e mod B)\n");
+        printf("0. Quitter\n");
+        printf("Votre choix : ");
+        scanf("%d", &choix);
+
+        if (choix == 6) {
+            BigBinary pgcd = BigBinary_PGCD(A, B);
+            printf("\nPGCD(A, B) = ");
+            afficheBigBinary(pgcd);
+            libereBigBinary(&pgcd);
+        }
+        else if (choix == 7) {
+            BigBinary mod = BigBinary_mod(A, B);
+            printf("\nA mod B = ");
+            afficheBigBinary(mod);
+            libereBigBinary(&mod);
+        }
+        else if (choix == 8) {
+            printf("\nEntrez l’exposant e (entier positif) : ");
+            scanf("%d", &exposant);
+            BigBinary exp = BigBinary_expMod(A, exposant, B);
+            printf("\n(A^e mod B) = ");
+            afficheBigBinary(exp);
+            libereBigBinary(&exp);
+        }
+        else if (choix == 5) {
+            BigBinary E = multiplicationEgyptienne(A,B);
+            printf("\nA x B = ");
+            afficheBigBinary(E);
+            libereBigBinary(&E);
+        }
+        else if (choix == 1) {
+            BigBinary C = Addition(A, B);
+            printf("\nA + B = ");
+            afficheBigBinary(C);
+            libereBigBinary(&C);
+        }
+        else if (choix == 2) {
+            BigBinary D = Soustraction(A, B);
+            printf("\nA - B = ");
+            afficheBigBinary(D);
+            libereBigBinary(&D);
+        }
+        else if (choix == 3) {
+            int eg = Egal(A, B);
+            if (eg){
+                printf("\nA == B\n");
+            }
+            else{
+                printf("\nA =/= B");
+            }
+        }
+        else if (choix == 4) {
+            int inf = Inferieur(A,B);
+            if (inf){
+                printf("\nA < B");
+            }
+            else{
+                printf("\nA > B");
+            }
+        }
+        else if (choix == 0) {
+            printf("\n===Fin du programme===\n");
+        }
+        else {
+            printf("Choix invalide.\n");
+        }
+
+    } while (choix != 0);
+
+    libereBigBinary(&A);
+    libereBigBinary(&B);
+
+    return 0;
+}
