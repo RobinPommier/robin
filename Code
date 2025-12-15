@@ -185,109 +185,143 @@ BigBinary Soustraction(BigBinary A, BigBinary B) {
     return result;
 }
 
+
+
+
 BigBinary BigBinary_PGCD(BigBinary A, BigBinary B) {
     if (estNul(A)) return B;
     if (estNul(B)) return A;
+
     int facteur2 = 0;
+
     while (estPair(A) && estPair(B)) {
         A = divisePar2(A);
         B = divisePar2(B);
         facteur2++;
     }
+
     while (!estNul(A)) {
         while (estPair(A)) A = divisePar2(A);
         while (estPair(B)) B = divisePar2(B);
+
         if (!Inferieur(A, B))
             A = Soustraction(A, B);
         else
             B = Soustraction(B, A);
     }
+
     for (int i = 0; i < facteur2; i++)
         B = multipliePar2(B);
+
     return B;
 }
-
 BigBinary BigBinary_mod(BigBinary A, BigBinary B) {
     if (estNul(B)) {
         printf("Erreur : division par zéro.\n");
         return creerBigBinaryDepuisChaine("0");
     }
-    BigBinary reste = initBigBinary(0, 1);
+
+    BigBinary reste = initBigBinary(0, 1); // reste = 0
+
+    // Parcours de chaque bit de A (de gauche à droite)
     for (int i = 0; i < A.Taille; i++) {
+        // reste = reste << 1
         BigBinary tmp = multipliePar2(reste);
         libereBigBinary(&reste);
         reste = tmp;
+
+        // ajoute le bit courant de A
         BigBinary bitA = initBigBinary(1, 1);
         bitA.Tdigits[0] = A.Tdigits[i];
         BigBinary tmp2 = Addition(reste, bitA);
         libereBigBinary(&reste);
         libereBigBinary(&bitA);
         reste = tmp2;
+
+        // si reste >= B alors reste = reste - B
         if (!Inferieur(reste, B)) {
             BigBinary tmp3 = Soustraction(reste, B);
             libereBigBinary(&reste);
             reste = tmp3;
         }
     }
-    return reste;
+
+    return reste; // reste contient A mod B
 }
+
+
 
 BigBinary multiplicationEgyptienne(BigBinary A, BigBinary B) {
     BigBinary resultat = initBigBinary(1, 0);
     BigBinary a = copie(A);
     BigBinary b = copie(B);
+
     while (!estNul(b)) {
         if (!estPair(b)) {
             BigBinary tmp = Addition(resultat, a);
             libereBigBinary(&resultat);
             resultat = tmp;
         }
+
         BigBinary tmpA = multipliePar2(a);
         libereBigBinary(&a);
         a = tmpA;
+
         BigBinary tmpB = divisePar2(b);
         libereBigBinary(&b);
         b = tmpB;
     }
+
     libereBigBinary(&a);
     libereBigBinary(&b);
     return resultat;
 }
 
 BigBinary BigBinary_expMod(BigBinary base, int exp, BigBinary mod) {
-    BigBinary result = creerBigBinaryDepuisChaine("1");
-    BigBinary tmpBase = copie(base);
+    BigBinary result = creerBigBinaryDepuisChaine("1");  // résultat = 1
+    BigBinary tmpBase = copie(base);                     // copie de la base
+
     while (exp > 0) {
         if (exp % 2 == 1) {
             BigBinary tmp = multiplicationEgyptienne(result, tmpBase);
             BigBinary tmpMod = BigBinary_mod(tmp, mod);
-            libereBigBinary(&tmp);
-            libereBigBinary(&result);
-            result = tmpMod;
+            libereBigBinary(&tmp);      // libération du résultat intermédiaire
+            libereBigBinary(&result);   // libération de l'ancien résultat
+            result = tmpMod;            // mise à jour du résultat
         }
+
         BigBinary tmp = multiplicationEgyptienne(tmpBase, tmpBase);
         BigBinary tmpMod = BigBinary_mod(tmp, mod);
-        libereBigBinary(&tmp);
-        libereBigBinary(&tmpBase);
-        tmpBase = tmpMod;
+        libereBigBinary(&tmp);         // libération de l'intermédiaire
+        libereBigBinary(&tmpBase);     // libération de l'ancienne base
+        tmpBase = tmpMod;              // mise à jour de la base
+
         exp /= 2;
     }
-    libereBigBinary(&tmpBase);
+
+    libereBigBinary(&tmpBase);  // libération de la base finale
     return result;
 }
+
+
 
 int main() {
     char chaineA[256], chaineB[256];
     int choix, exposant;
+
     printf("=== CALCUL SUR GRANDS ENTIERS BINAIRES ===\n");
+
     printf("Entrez le premier nombre binaire A : ");
     scanf("%s", chaineA);
     printf("Entrez le deuxième nombre binaire B : ");
     scanf("%s", chaineB);
+
     BigBinary A = creerBigBinaryDepuisChaine(chaineA);
     BigBinary B = creerBigBinaryDepuisChaine(chaineB);
+
     do {
         printf("\n--- MENU ---\n");
+
         printf("1. Calculer l'addition\n");
         printf("2. Calculer la soustraction\n");
         printf("3. Vérifier l'égaliter\n");
@@ -299,6 +333,7 @@ int main() {
         printf("0. Quitter\n");
         printf("Votre choix : ");
         scanf("%d", &choix);
+
         if (choix == 6) {
             BigBinary pgcd = BigBinary_PGCD(A, B);
             printf("\nPGCD(A, B) = ");
@@ -361,8 +396,11 @@ int main() {
         else {
             printf("Choix invalide.\n");
         }
+
     } while (choix != 0);
+
     libereBigBinary(&A);
     libereBigBinary(&B);
+
     return 0;
 }
